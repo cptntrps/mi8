@@ -1,0 +1,6 @@
+# Additional requirements for AgenticSeek functionality
+termcolor>=2.0.0
+langdetect>=1.0.9
+redis>=5.0.1
+google-translate>=1.0.0
+googletrans==4.0.0rc1

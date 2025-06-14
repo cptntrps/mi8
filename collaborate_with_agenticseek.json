@@ -1,0 +1,9 @@
+{
+  "model": "agenticsseek-enhanced",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello AgenticSeek! You now have real functional capabilities with tools. Let's work together to plan your next development steps. First, analyze your current capabilities and identify what major features or improvements you think would make you most useful to users. Create a development roadmap file."
+    }
+  ]
+}

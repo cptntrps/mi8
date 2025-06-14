@@ -1,0 +1,16 @@
+{
+  "OPENAI_API_BASE_URL": "http://localhost:8000",
+  "OPENAI_API_KEY": "agenticsseek-demo-key",
+  "models": [
+    {
+      "id": "agenticsseek-enhanced",
+      "name": "AgenticSeek Enhanced",
+      "description": "General purpose agent with MCP integration"
+    },
+    {
+      "id": "agenticsseek-database",
+      "name": "AgenticSeek Database",
+      "description": "Database specialist for SQL operations"
+    }
+  ]
+}

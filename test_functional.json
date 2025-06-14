@@ -1,0 +1,9 @@
+{
+  "model": "agenticsseek-enhanced", 
+  "messages": [
+    {
+      "role": "user",
+      "content": "Read the contents of /tmp/agenticseek_test.txt and tell me what it contains. Use your file reading capabilities."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "model": "agenticsseek-enhanced",
+  "messages": [
+    {
+      "role": "user", 
+      "content": "List the actual contents of the /tmp directory and tell me what files are there."
+    }
+  ]
+}

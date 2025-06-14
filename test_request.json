@@ -1,0 +1,10 @@
+{
+  "model": "agenticsseek-enhanced",
+  "messages": [
+    {
+      "role": "user", 
+      "content": "Hello! Tell me about your capabilities. Are you running locally with Ollama?"
+    }
+  ],
+  "temperature": 0.7
+}

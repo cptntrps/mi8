@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgenticSeek Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="dashboard-root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // WebSocket connection for real-time updates
+        const useWebSocket = (url) => {
+            const [socket, setSocket] = useState(null);
+            const [message, setMessage] = useState(null);
+
+            useEffect(() => {
+                const ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    setSocket(ws);
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    setMessage(data);
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    setSocket(null);
+                };
+
+                return () => {
+                    ws.close();
+                };
+            }, [url]);
+
+            return { socket, message };
+        };
+
+        // Agent Status Component
+        const AgentStatus = ({ agent, status }) => {
+            const getStatusColor = (status) => {
+                if (status?.includes('✅')) return 'text-green-600';
+                if (status?.includes('⚠️')) return 'text-yellow-600';
+                if (status?.includes('❌')) return 'text-red-600';
+                return 'text-gray-600';
+            };
+
+            return (
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">🤖 {agent}</h3>
+                    <div className={`text-sm ${getStatusColor(status)}`}>
+                        <pre className="whitespace-pre-wrap">{status || 'Loading...'}</pre>
+                    </div>
+                </div>
+            );
+        };
+
+        // Database Panel Component
+        const DatabasePanel = () => {
+            const [connections, setConnections] = useState([]);
+            const [query, setQuery] = useState('');
+            const [results, setResults] = useState(null);
+
+            const executeQuery = async () => {
+                if (!query.trim()) return;
+                
+                try {
+                    const response = await fetch('/api/database/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            connection_id: 'default',
+                            query: query,
+                            limit: 50
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    setResults(data);
+                } catch (error) {
+                    setResults({ success: false, error: error.message });
+                }
+            };
+
+            return (
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">🗄️ Database Operations</h3>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">SQL Query:</label>
+                            <textarea
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                className="w-full p-3 border rounded-md font-mono text-sm"
+                                rows="4"
+                                placeholder="SELECT * FROM users LIMIT 10;"
+                            />
+                        </div>
+                        
+                        <button
+                            onClick={executeQuery}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                        >
+                            Execute Query
+                        </button>
+                        
+                        {results && (
+                            <div className="mt-4">
+                                <h4 className="font-medium mb-2">Results:</h4>
+                                <pre className="bg-gray-100 p-3 rounded-md text-sm overflow-auto max-h-64">
+                                    {JSON.stringify(results, null, 2)}
+                                </pre>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Voice Panel Component
+        const VoicePanel = () => {
+            const [isListening, setIsListening] = useState(false);
+            const [commands, setCommands] = useState([]);
+
+            const toggleVoice = async () => {
+                try {
+                    const action = isListening ? 'stop' : 'start';
+                    const response = await fetch('/api/voice/control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: action,
+                            agent_type: 'enhanced_mcp'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    setIsListening(!isListening);
+                } catch (error) {
+                    console.error('Voice control error:', error);
+                }
+            };
+
+            return (
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">🎤 Voice Control</h3>
+                    
+                    <div className="space-y-4">
+                        <div className="flex items-center space-x-4">
+                            <button
+                                onClick={toggleVoice}
+                                className={`px-4 py-2 rounded-md ${
+                                    isListening 
+                                        ? 'bg-red-600 text-white hover:bg-red-700' 
+                                        : 'bg-green-600 text-white hover:bg-green-700'
+                                }`}
+                            >
+                                {isListening ? '🔴 Stop Listening' : '🎤 Start Listening'}
+                            </button>
+                            
+                            <div className={`h-3 w-3 rounded-full ${
+                                isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-300'
+                            }`}></div>
+                        </div>
+                        
+                        <div className="text-sm text-gray-600">
+                            <p>Status: {isListening ? 'Listening for commands...' : 'Voice control inactive'}</p>
+                        </div>
+                        
+                        <div>
+                            <h4 className="font-medium mb-2">Sample Voice Commands:</h4>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                                <li>• "AgenticSeek connect to database"</li>
+                                <li>• "AgenticSeek list all tables"</li>
+                                <li>• "AgenticSeek open main.py in cursor"</li>
+                                <li>• "AgenticSeek remember I'm working on auth"</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main Dashboard Component
+        const Dashboard = () => {
+            const [agents, setAgents] = useState({});
+            const { socket, message } = useWebSocket('ws://localhost:8000/ws');
+
+            // Fetch agent status
+            useEffect(() => {
+                const fetchAgentStatus = async () => {
+                    try {
+                        const response = await fetch('/api/agents');
+                        const agentList = await response.json();
+                        
+                        const statusPromises = agentList.map(async (agent) => {
+                            const statusResponse = await fetch(`/api/agents/${agent}/status`);
+                            const statusData = await statusResponse.json();
+                            return [agent, statusData.status];
+                        });
+                        
+                        const statuses = await Promise.all(statusPromises);
+                        const agentStatuses = Object.fromEntries(statuses);
+                        setAgents(agentStatuses);
+                    } catch (error) {
+                        console.error('Error fetching agent status:', error);
+                    }
+                };
+
+                fetchAgentStatus();
+                const interval = setInterval(fetchAgentStatus, 30000); // Refresh every 30s
+                return () => clearInterval(interval);
+            }, []);
+
+            // Handle WebSocket messages
+            useEffect(() => {
+                if (message) {
+                    console.log('Real-time update:', message);
+                    // Update UI based on real-time data
+                }
+            }, [message]);
+
+            return (
+                <div className="min-h-screen bg-gray-100">
+                    {/* Header */}
+                    <header className="bg-white shadow">
+                        <div className="max-w-7xl mx-auto px-4 py-6">
+                            <h1 className="text-3xl font-bold text-gray-900">
+                                🤖 AgenticSeek Dashboard
+                            </h1>
+                            <p className="text-gray-600 mt-2">
+                                Real-time monitoring and control for your AI agents
+                            </p>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-600">Active Agents</p>
+                                        <p className="text-2xl font-semibold text-gray-900">
+                                            {Object.keys(agents).length}
+                                        </p>
+                                    </div>
+                                    <div className="text-blue-600">🤖</div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-600">WebSocket</p>
+                                        <p className="text-2xl font-semibold text-gray-900">
+                                            {socket ? 'Connected' : 'Disconnected'}
+                                        </p>
+                                    </div>
+                                    <div className={socket ? 'text-green-600' : 'text-red-600'}>
+                                        🔌
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-600">API Status</p>
+                                        <p className="text-2xl font-semibold text-green-600">Healthy</p>
+                                    </div>
+                                    <div className="text-green-600">✅</div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-600">UI Mode</p>
+                                        <p className="text-2xl font-semibold text-blue-600">Hybrid</p>
+                                    </div>
+                                    <div className="text-blue-600">🎨</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Agent Status Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            {Object.entries(agents).map(([agent, status]) => (
+                                <AgentStatus key={agent} agent={agent} status={status} />
+                            ))}
+                        </div>
+
+                        {/* Specialized Panels */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <DatabasePanel />
+                            <VoicePanel />
+                        </div>
+
+                        {/* Quick Links */}
+                        <div className="mt-8 bg-white rounded-lg shadow p-6">
+                            <h3 className="text-lg font-semibold mb-4">🔗 Quick Links</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <a href="http://localhost:3000" target="_blank" 
+                                   className="text-center p-4 border rounded-md hover:bg-gray-50">
+                                    <div className="text-2xl mb-2">💬</div>
+                                    <div className="text-sm font-medium">Open WebUI</div>
+                                </a>
+                                <a href="http://localhost:8000/docs" target="_blank"
+                                   className="text-center p-4 border rounded-md hover:bg-gray-50">
+                                    <div className="text-2xl mb-2">📚</div>
+                                    <div className="text-sm font-medium">API Docs</div>
+                                </a>
+                                <a href="http://localhost:8000/v1/models" target="_blank"
+                                   className="text-center p-4 border rounded-md hover:bg-gray-50">
+                                    <div className="text-2xl mb-2">🤖</div>
+                                    <div className="text-sm font-medium">Models</div>
+                                </a>
+                                <a href="http://localhost:8000/health" target="_blank"
+                                   className="text-center p-4 border rounded-md hover:bg-gray-50">
+                                    <div className="text-2xl mb-2">❤️</div>
+                                    <div className="text-sm font-medium">Health</div>
+                                </a>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        // Render the dashboard
+        ReactDOM.render(<Dashboard />, document.getElementById('dashboard-root'));
+    </script>
+</body>
+</html>
